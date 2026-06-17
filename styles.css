@@ -1,0 +1,318 @@
+.fitness-record-view {
+	--fr-border: var(--background-modifier-border);
+	--fr-muted: var(--text-muted);
+	--fr-accent: var(--interactive-accent);
+	--fr-accent-hover: var(--interactive-accent-hover);
+	--fr-panel: var(--background-primary);
+	--fr-panel-alt: var(--background-secondary);
+	--fr-radius: 8px;
+	display: flex;
+	height: 100%;
+	min-height: 0;
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.fitness-record-view button {
+	border: 1px solid var(--fr-border);
+	border-radius: 6px;
+	background: var(--background-secondary);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 12px;
+	line-height: 1;
+	min-height: 28px;
+	padding: 6px 9px;
+}
+
+.fitness-record-view button:hover {
+	background: var(--background-modifier-hover);
+}
+
+.fr-sidebar {
+	display: flex;
+	flex-direction: column;
+	flex: 0 0 260px;
+	min-width: 220px;
+	max-width: 320px;
+	border-right: 1px solid var(--fr-border);
+	background: var(--fr-panel-alt);
+	min-height: 0;
+}
+
+.fr-sidebar.fr-right {
+	border-left: 1px solid var(--fr-border);
+	border-right: 0;
+}
+
+.fr-sidebar.fr-collapsed {
+	flex-basis: 44px;
+	min-width: 44px;
+	max-width: 44px;
+}
+
+.fr-sidebar.fr-collapsed .fr-sidebar-body,
+.fr-sidebar.fr-collapsed .fr-sidebar-title {
+	display: none;
+}
+
+.fr-sidebar-header,
+.fr-main-header,
+.fr-section-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.fr-sidebar-header {
+	padding: 10px;
+	border-bottom: 1px solid var(--fr-border);
+	min-height: 48px;
+}
+
+.fr-sidebar-title,
+.fr-main-title {
+	font-size: 15px;
+	font-weight: 650;
+}
+
+.fr-sidebar-body {
+	overflow: auto;
+	padding: 10px;
+}
+
+.fr-main {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	min-width: 0;
+	min-height: 0;
+}
+
+.fr-main-header {
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--fr-border);
+}
+
+.fr-table-wrap {
+	flex: 1 1 auto;
+	overflow: auto;
+	padding: 12px;
+}
+
+.fr-section {
+	border: 1px solid var(--fr-border);
+	border-radius: var(--fr-radius);
+	background: var(--fr-panel);
+	margin-bottom: 10px;
+	overflow: hidden;
+}
+
+.fr-section-header {
+	padding: 8px;
+	border-bottom: 1px solid var(--fr-border);
+}
+
+.fr-section-name {
+	background: transparent;
+	border: 0;
+	color: var(--text-normal);
+	cursor: pointer;
+	font-weight: 600;
+	text-align: left;
+}
+
+.fr-action-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 8px;
+}
+
+.fr-tag {
+	border: 1px solid var(--fr-border);
+	border-radius: 999px;
+	background: var(--background-primary);
+	color: var(--text-normal);
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	padding: 5px 9px;
+	white-space: nowrap;
+}
+
+.fr-tag.fr-clickable {
+	cursor: pointer;
+}
+
+.fr-table {
+	border-collapse: separate;
+	border-spacing: 0;
+	min-width: 760px;
+	width: 100%;
+}
+
+.fr-table th,
+.fr-table td {
+	border-bottom: 1px solid var(--fr-border);
+	border-right: 1px solid var(--fr-border);
+	padding: 6px;
+	vertical-align: top;
+}
+
+.fr-table th {
+	background: var(--background-secondary);
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	text-align: left;
+}
+
+.fr-table th:first-child,
+.fr-table td:first-child {
+	border-left: 1px solid var(--fr-border);
+	width: 44px;
+}
+
+.fr-row-actions {
+	position: relative;
+}
+
+.fr-cell-input,
+.fr-cell-select,
+.fr-cell-textarea {
+	background: transparent;
+	border: 0;
+	color: var(--text-normal);
+	font: inherit;
+	width: 100%;
+	min-width: 120px;
+	outline: none;
+}
+
+.fr-cell-textarea {
+	min-height: 30px;
+	resize: vertical;
+}
+
+.fr-pill-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.fr-empty {
+	color: var(--fr-muted);
+	font-size: 13px;
+	padding: 12px;
+	text-align: center;
+}
+
+.fr-heatmap {
+	display: grid;
+	gap: 12px;
+}
+
+.fr-body-map {
+	border: 1px solid var(--fr-border);
+	border-radius: var(--fr-radius);
+	padding: 10px;
+	background: var(--background-primary);
+}
+
+.fr-body-title {
+	color: var(--fr-muted);
+	font-size: 12px;
+	margin-bottom: 8px;
+	text-align: center;
+}
+
+.fr-muscle-grid {
+	display: grid;
+	gap: 5px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.fr-muscle {
+	border-radius: 6px;
+	color: var(--text-normal);
+	font-size: 11px;
+	min-height: 26px;
+	padding: 6px;
+	text-align: center;
+}
+
+.modal.fr-modal .modal-content {
+	padding-top: 4px;
+}
+
+.fr-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+}
+
+.fr-modal-title {
+	font-size: 18px;
+	font-weight: 650;
+}
+
+.fr-form-row {
+	display: grid;
+	gap: 6px;
+	margin-bottom: 12px;
+}
+
+.fr-form-row label {
+	color: var(--fr-muted);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.fr-form-row input,
+.fr-form-row select,
+.fr-form-row textarea {
+	background: var(--background-primary);
+	border: 1px solid var(--fr-border);
+	border-radius: 6px;
+	color: var(--text-normal);
+	font: inherit;
+	padding: 8px;
+	width: 100%;
+}
+
+.fr-modal-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+	margin-top: 14px;
+}
+
+@media (max-width: 800px) {
+	.fitness-record-view {
+		flex-direction: column;
+	}
+
+	.fr-sidebar,
+	.fr-sidebar.fr-right {
+		border-left: 0;
+		border-right: 0;
+		border-bottom: 1px solid var(--fr-border);
+		flex: 0 0 auto;
+		max-width: none;
+		min-width: 0;
+	}
+
+	.fr-sidebar.fr-collapsed {
+		flex-basis: 44px;
+		max-width: none;
+		min-width: 0;
+	}
+
+	.fr-sidebar-body {
+		max-height: 220px;
+	}
+}
