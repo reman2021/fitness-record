@@ -1,6 +1,6 @@
 import { Notice, TFile, Vault } from 'obsidian';
 import YAML from 'yaml';
-import { createDefaultData, DEFAULT_COLUMNS, type FitnessData } from './types';
+import { createDefaultData, DEFAULT_COLUMNS, DEFAULT_HEATMAP_DAYS, HEATMAP_DAY_OPTIONS, type FitnessData, type HeatmapDays } from './types';
 
 const DATA_BLOCK_START = '```fitness-record';
 const DATA_BLOCK_END = '```';
@@ -62,8 +62,15 @@ function normalizeData(input: Partial<FitnessData> | null): FitnessData {
 		ui: {
 			leftCollapsed: Boolean(input.ui?.leftCollapsed ?? false),
 			rightCollapsed: Boolean(input.ui?.rightCollapsed ?? false),
+			heatmapDays: normalizeHeatmapDays(input.ui?.heatmapDays),
 		},
 	};
+}
+
+function normalizeHeatmapDays(value: unknown): HeatmapDays {
+	if (value === 'all') return 'all';
+	const days = Number(value);
+	return HEATMAP_DAY_OPTIONS.includes(days as HeatmapDays) ? days as HeatmapDays : DEFAULT_HEATMAP_DAYS;
 }
 
 function renderDataFile(data: FitnessData): string {

@@ -25,7 +25,7 @@ export default class FitnessRecordPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'add-workout-row',
-			name: '新增健身记录行',
+			name: '新增健身记录',
 			callback: () => {
 				const view = this.getFirstFitnessView();
 				if (!view) {

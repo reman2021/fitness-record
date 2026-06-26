@@ -1,5 +1,9 @@
 export type ColumnType = 'date' | 'tag' | 'multi-tag' | 'text' | 'number' | 'link' | 'checkbox';
 export type SortDirection = 'none' | 'asc' | 'desc';
+export type HeatmapDays = 30 | 90 | 180 | 365 | 'all';
+
+export const HEATMAP_DAY_OPTIONS: HeatmapDays[] = [30, 90, 180, 365, 'all'];
+export const DEFAULT_HEATMAP_DAYS: HeatmapDays = 90;
 
 export interface FitnessSettings {
 	dataFile: string;
@@ -17,6 +21,10 @@ export interface MuscleDefinition {
 	id: string;
 	name: string;
 	group: 'front' | 'back' | 'both';
+	svgRegionIds: {
+		front?: string[];
+		back?: string[];
+	};
 }
 
 export interface FitnessAction {
@@ -24,6 +32,13 @@ export interface FitnessAction {
 	name: string;
 	muscles: string[];
 	description: string;
+}
+
+export interface WorkoutEntry {
+	action: string;
+	sets: number | null;
+	reps: number | null;
+	weight: number | null;
 }
 
 export interface FitnessSection {
@@ -43,7 +58,7 @@ export interface FitnessColumn {
 	locked?: boolean;
 }
 
-export type CellValue = string | number | boolean | string[] | null;
+export type CellValue = string | number | boolean | string[] | WorkoutEntry[] | null;
 
 export interface FitnessRecord {
 	id: string;
@@ -53,6 +68,7 @@ export interface FitnessRecord {
 export interface FitnessUiState {
 	leftCollapsed: boolean;
 	rightCollapsed: boolean;
+	heatmapDays: HeatmapDays;
 }
 
 export interface FitnessData {
@@ -64,23 +80,23 @@ export interface FitnessData {
 }
 
 export const MUSCLES: MuscleDefinition[] = [
-	{ id: 'pectoralis-major', name: '胸大肌', group: 'front' },
-	{ id: 'anterior-deltoid', name: '三角肌前束', group: 'front' },
-	{ id: 'middle-deltoid', name: '三角肌中束', group: 'both' },
-	{ id: 'posterior-deltoid', name: '三角肌后束', group: 'back' },
-	{ id: 'biceps-brachii', name: '肱二头肌', group: 'front' },
-	{ id: 'triceps-brachii', name: '肱三头肌', group: 'back' },
-	{ id: 'forearm-flexors', name: '前臂肌群', group: 'both' },
-	{ id: 'rectus-abdominis', name: '腹直肌', group: 'front' },
-	{ id: 'obliques', name: '腹斜肌', group: 'front' },
-	{ id: 'latissimus-dorsi', name: '背阔肌', group: 'back' },
-	{ id: 'trapezius', name: '斜方肌', group: 'back' },
-	{ id: 'erector-spinae', name: '竖脊肌', group: 'back' },
-	{ id: 'quadriceps', name: '股四头肌', group: 'front' },
-	{ id: 'hamstrings', name: '腘绳肌', group: 'back' },
-	{ id: 'gluteus', name: '臀大肌', group: 'back' },
-	{ id: 'calves', name: '小腿三头肌', group: 'both' },
-	{ id: 'cardio', name: '心肺耐力', group: 'both' },
+	{ id: 'pectoralis-major', name: '胸大肌', group: 'front', svgRegionIds: { front: ['front-pectoralis-major-left', 'front-pectoralis-major-right'] } },
+	{ id: 'anterior-deltoid', name: '三角肌前束', group: 'front', svgRegionIds: { front: ['front-middle-deltoid-left', 'front-middle-deltoid-right'] } },
+	{ id: 'middle-deltoid', name: '三角肌中束', group: 'front', svgRegionIds: { front: ['front-middle-deltoid-left', 'front-middle-deltoid-right'] } },
+	{ id: 'posterior-deltoid', name: '三角肌后束', group: 'back', svgRegionIds: { back: ['back-posterior-deltoid-left', 'back-posterior-deltoid-right'] } },
+	{ id: 'biceps-brachii', name: '肱二头肌', group: 'front', svgRegionIds: { front: ['front-biceps-brachii-left', 'front-biceps-brachii-right'] } },
+	{ id: 'triceps-brachii', name: '肱三头肌', group: 'back', svgRegionIds: { back: ['back-triceps-brachii-left', 'back-triceps-brachii-right'] } },
+	{ id: 'forearm-flexors', name: '前臂肌群', group: 'both', svgRegionIds: { front: ['front-forearm-flexors-left', 'front-forearm-flexors-right'], back: ['back-forearm-flexors-left', 'back-forearm-flexors-right'] } },
+	{ id: 'rectus-abdominis', name: '腹直肌', group: 'front', svgRegionIds: { front: ['front-rectus-abdominis'] } },
+	{ id: 'obliques', name: '腹斜肌', group: 'front', svgRegionIds: { front: ['front-obliques-left', 'front-obliques-right'] } },
+	{ id: 'latissimus-dorsi', name: '背阔肌', group: 'back', svgRegionIds: { back: ['back-latissimus-dorsi-left', 'back-latissimus-dorsi-right'] } },
+	{ id: 'trapezius', name: '斜方肌', group: 'back', svgRegionIds: { back: ['back-trapezius-left', 'back-trapezius-right'] } },
+	{ id: 'erector-spinae', name: '竖脊肌', group: 'back', svgRegionIds: { back: ['back-erector-spinae'] } },
+	{ id: 'quadriceps', name: '股四头肌', group: 'front', svgRegionIds: { front: ['front-quadriceps-left', 'front-quadriceps-right'] } },
+	{ id: 'hamstrings', name: '腘绳肌', group: 'back', svgRegionIds: { back: ['back-hamstrings-left', 'back-hamstrings-right'] } },
+	{ id: 'gluteus', name: '臀大肌', group: 'back', svgRegionIds: { back: ['back-gluteus-left', 'back-gluteus-right'] } },
+	{ id: 'calves', name: '小腿三头肌', group: 'both', svgRegionIds: { front: ['front-calves-left', 'front-calves-right'], back: ['back-calves-left', 'back-calves-right'] } },
+	{ id: 'cardio', name: '心肺耐力', group: 'both', svgRegionIds: {} },
 ];
 
 export const DEFAULT_COLUMNS: FitnessColumn[] = [
@@ -122,6 +138,7 @@ export function createDefaultData(): FitnessData {
 		ui: {
 			leftCollapsed: false,
 			rightCollapsed: false,
+			heatmapDays: DEFAULT_HEATMAP_DAYS,
 		},
 	};
 }

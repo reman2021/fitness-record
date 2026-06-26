@@ -29,6 +29,9 @@ const context = await esbuild.context({
 		'obsidian',
 	],
 	format: 'cjs',
+	loader: {
+		'.svg': 'text',
+	},
 	logLevel: 'info',
 	minify: production,
 	outfile: 'main.js',
