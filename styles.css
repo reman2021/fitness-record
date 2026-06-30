@@ -374,18 +374,58 @@
 
 .fr-record-icon {
 	align-items: center;
-	background: color-mix(in srgb, var(--fr-accent) 16%, var(--background-primary));
-	border-radius: 50%;
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+	box-shadow: none;
 	color: var(--fr-accent);
 	display: flex;
 	height: 30px;
 	justify-content: center;
+	outline: 0;
 	width: 30px;
 }
 
 .fr-record-icon svg {
-	height: 16px;
-	width: 16px;
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	outline: 0;
+	height: 14px;
+	width: 14px;
+}
+
+.fr-action-icon {
+	align-items: center;
+	background: color-mix(in srgb, var(--fr-accent) 16%, var(--background-primary));
+	border-radius: 50%;
+	color: var(--fr-accent);
+	display: inline-flex;
+	flex: 0 0 auto;
+	height: 34px;
+	justify-content: center;
+	width: 34px;
+}
+
+.fr-action-icon svg {
+	height: 14px;
+	width: 14px;
+}
+
+.fr-action-icon-img {
+	display: block;
+	height: 100%;
+	object-fit: contain;
+	width: 100%;
+}
+
+.fr-action-icon-mask {
+	background: currentColor;
+	display: block;
+	height: 100%;
+	mask: var(--fr-action-icon-url) center / contain no-repeat;
+	-webkit-mask: var(--fr-action-icon-url) center / contain no-repeat;
+	width: 100%;
 }
 
 .fr-record-content {
@@ -688,6 +728,41 @@
 	gap: 4px;
 }
 
+.fr-icon-picker {
+	display: grid;
+	gap: 8px;
+	grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+}
+
+.fr-icon-option {
+	align-items: center;
+	display: inline-flex;
+	height: 42px;
+	justify-content: center;
+	min-height: 42px !important;
+	padding: 0 !important;
+	width: 100%;
+}
+
+.fr-icon-option svg {
+	height: 18px;
+	width: 18px;
+}
+
+.fr-icon-option.is-active {
+	background: var(--fr-accent) !important;
+	border-color: color-mix(in srgb, var(--fr-accent) 70%, var(--fr-border)) !important;
+	color: var(--text-on-accent) !important;
+}
+
+.fr-icon-picker-hint {
+	color: var(--fr-muted);
+	font-size: 12px;
+	grid-column: 1 / -1;
+	line-height: 1.4;
+	padding: 4px 2px;
+}
+
 .fr-empty {
 	color: var(--fr-muted);
 	font-size: 13px;
@@ -978,7 +1053,13 @@
 }
 
 .fr-body-svg #line {
-	stroke: color-mix(in srgb, var(--text-muted) 62%, var(--fr-heat) 18%);
+	fill: color-mix(in srgb, var(--text-muted) 72%, var(--background-primary) 28%) !important;
+	stroke: color-mix(in srgb, var(--text-muted) 72%, var(--background-primary) 28%) !important;
+}
+
+.fr-body-svg #line * {
+	fill: color-mix(in srgb, var(--text-muted) 72%, var(--background-primary) 28%) !important;
+	stroke: color-mix(in srgb, var(--text-muted) 72%, var(--background-primary) 28%) !important;
 }
 
 .fr-svg-muscle-source {
@@ -1154,15 +1235,49 @@
 .fr-workout-picker button,
 .fr-library-action {
 	align-items: center;
-	background: var(--background-primary);
-	border: 1px solid transparent;
+	background: color-mix(in srgb, var(--background-primary) 88%, var(--background-secondary) 12%);
+	border: 1px solid color-mix(in srgb, var(--fr-border) 70%, transparent);
 	border-radius: var(--fr-radius);
 	display: grid;
 	gap: 5px;
 	justify-items: center;
 	min-height: 70px;
 	padding: 10px;
+	position: relative;
 	text-align: center;
+}
+
+.fr-library-title,
+.fr-workout-entry-name,
+.fr-workout-picker button {
+	align-items: center;
+	display: inline-flex;
+	gap: 8px;
+	min-width: 0;
+}
+
+.fr-library-title {
+	justify-self: stretch;
+}
+
+.fr-library-icon,
+.fr-workout-picker-icon,
+.fr-workout-entry-icon {
+	height: 34px;
+	width: 34px;
+}
+
+.fr-library-icon svg,
+.fr-workout-picker-icon svg,
+.fr-workout-entry-icon svg {
+	height: 13px;
+	width: 13px;
+}
+
+.fr-workout-picker-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .fr-workout-picker button.is-active {
@@ -1219,6 +1334,43 @@
 	color: var(--text-normal);
 	justify-items: start;
 	text-align: left;
+}
+
+.fr-library-remove {
+	align-items: center;
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	color: var(--fr-muted) !important;
+	display: inline-flex;
+	font-size: 16px !important;
+	height: 22px !important;
+	justify-content: center;
+	line-height: 1 !important;
+	min-height: 22px !important;
+	opacity: 0;
+	padding: 0 !important;
+	position: absolute;
+	right: 6px;
+	top: 6px;
+	transform: translateY(-2px);
+	transition: opacity 0.14s ease, transform 0.14s ease, color 0.14s ease, background 0.14s ease;
+	width: 22px !important;
+	z-index: 2;
+}
+
+.fr-library-action:hover .fr-library-remove,
+.fr-library-remove:focus-visible {
+	opacity: 1;
+	transform: translateY(0);
+}
+
+.fr-library-remove:hover {
+	background: transparent !important;
+	border-color: transparent !important;
+	box-shadow: none !important;
+	color: var(--fr-danger) !important;
 }
 
 .fr-library-name {
@@ -1535,10 +1687,17 @@
 }
 
 .fr-record-icon {
-	background:
-		linear-gradient(135deg, var(--fr-accent-soft), color-mix(in srgb, var(--interactive-accent) 8%, transparent));
-	border: 1px solid color-mix(in srgb, var(--fr-accent) 26%, var(--fr-border));
-	box-shadow: inset 0 1px 0 color-mix(in srgb, white 8%, transparent);
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	border-radius: 0;
+}
+
+.fr-record-icon svg {
+	background: transparent;
+	border: 0;
+	display: block;
+	box-shadow: none;
 }
 
 .fr-record-section,
@@ -2080,7 +2239,9 @@
 
 .fr-workout-picker button,
 .fr-library-action {
-	background: color-mix(in srgb, var(--background-primary) 84%, var(--interactive-accent) 6%);
+	background:
+		linear-gradient(180deg, color-mix(in srgb, var(--background-secondary) 42%, transparent), transparent 70%),
+		color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary) 8%);
 	border: 1px solid color-mix(in srgb, var(--fr-border) 70%, transparent);
 	border-radius: var(--fr-radius);
 	box-shadow: inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
@@ -2144,6 +2305,8 @@
 .fr-library-action {
 	align-content: center;
 	justify-items: start;
+	min-width: 0;
+	position: relative;
 	text-align: left;
 }
 
@@ -2151,22 +2314,33 @@
 	font-size: 15px;
 	font-weight: 800;
 	line-height: 1.2;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .fr-library-desc {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 1;
 	line-height: 1.35;
+	max-width: 100%;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+	word-break: break-word;
 }
 
 .fr-library-add .fr-library-name {
 	align-items: center;
-	background: var(--fr-accent-soft);
-	border-radius: var(--fr-radius-sm);
+	background: color-mix(in srgb, var(--fr-accent) 16%, var(--background-primary));
+	border-radius: 50%;
 	color: var(--fr-accent);
 	display: inline-flex;
-	font-size: 22px;
-	height: 30px;
+	font-size: 17px;
+	height: 32px;
 	justify-content: center;
-	width: 30px;
+	width: 32px;
 }
 
 .fr-modal-actions {
@@ -2393,4 +2567,126 @@
 .fr-muscle-key {
 	background: color-mix(in srgb, var(--background-primary) 82%, var(--fr-heat) 8%);
 	border-color: color-mix(in srgb, var(--fr-heat) 18%, var(--fr-border));
+}
+
+/* ===== Action Icon Picker and Action Cards ===== */
+.fr-modal.modal .fr-icon-picker {
+	background: color-mix(in srgb, var(--background-secondary) 38%, transparent);
+	border: 1px solid color-mix(in srgb, var(--fr-border) 56%, transparent);
+	border-radius: var(--fr-radius);
+	display: grid;
+	gap: 8px;
+	grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+	padding: 10px;
+	width: 100%;
+}
+
+.fr-modal.modal .fr-icon-option {
+	align-items: center;
+	background: color-mix(in srgb, var(--background-primary) 82%, var(--interactive-accent) 10%);
+	border: 1px solid color-mix(in srgb, var(--fr-border) 76%, transparent);
+	border-radius: var(--fr-radius-sm);
+	color: var(--text-normal);
+	display: inline-flex;
+	height: 42px;
+	justify-content: center;
+	min-height: 42px !important;
+	padding: 0 !important;
+	width: 100%;
+}
+
+.fr-modal.modal .fr-icon-option.is-active {
+	background: var(--fr-accent) !important;
+	border-color: color-mix(in srgb, var(--fr-accent) 70%, var(--fr-border)) !important;
+	color: var(--text-on-accent) !important;
+}
+
+.fr-modal.modal .fr-icon-option svg {
+	height: 18px;
+	width: 18px;
+}
+
+.fr-modal.modal .fr-icon-option .fr-action-icon-img {
+	height: 24px;
+	width: 24px;
+}
+
+.fr-modal.modal .fr-icon-option .fr-action-icon-mask {
+	height: 24px;
+	width: 24px;
+}
+
+.fr-action-icon {
+	align-items: center;
+	background: color-mix(in srgb, var(--fr-accent) 16%, var(--background-primary));
+	border-radius: 50%;
+	color: var(--fr-accent);
+	display: inline-flex;
+	flex: 0 0 auto;
+	height: 34px;
+	justify-content: center;
+	width: 34px;
+}
+
+.fr-action-icon svg {
+	height: 13px;
+	width: 13px;
+}
+
+.fr-action-icon .fr-action-icon-img {
+	height: 70%;
+	width: 70%;
+}
+
+.fr-action-icon .fr-action-icon-mask {
+	height: 70%;
+	width: 70%;
+}
+
+.fr-library-title,
+.fr-workout-picker button,
+.fr-workout-entry-name {
+	align-items: center;
+	display: inline-flex;
+	gap: 8px;
+	min-width: 0;
+}
+
+.fr-library-title {
+	justify-self: stretch;
+}
+
+.fr-workout-picker button {
+	justify-content: flex-start;
+	text-align: left;
+}
+
+.fr-workout-picker-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.fr-library-icon,
+.fr-workout-picker-icon,
+.fr-workout-entry-icon {
+	height: 28px;
+	width: 28px;
+}
+
+.fr-library-icon svg,
+.fr-workout-picker-icon svg,
+.fr-workout-entry-icon svg {
+	height: 15px;
+	width: 15px;
+}
+
+.fr-workout-picker button.is-active .fr-action-icon {
+	background: color-mix(in srgb, var(--text-on-accent) 18%, transparent);
+	color: var(--text-on-accent);
+}
+
+.fr-library-add .fr-library-name svg {
+	height: 18px;
+	width: 18px;
 }

@@ -1,5 +1,6 @@
 import { ItemView, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { loadFitnessData, saveFitnessData } from './data';
+import { DEFAULT_ACTION_ICON, getActionIconFolder, renderActionIcon } from './icons';
 import { ActionLibraryModal, ActionModal, ColumnModal, WorkoutRecordModal, type SaveWorkoutPayload } from './modals';
 import { HEATMAP_DAY_OPTIONS, MUSCLES, type CellValue, type FitnessAction, type FitnessColumn, type FitnessData, type FitnessRecord, type FitnessSection, type HeatmapDays, type WorkoutEntry } from './types';
 import type FitnessRecordPlugin from './main';
@@ -16,9 +17,11 @@ export class FitnessView extends ItemView {
 	private rightSidebarWidth = readStoredSidebarWidth();
 	private tableFilter = '';
 	private searchComposing = false;
+	private actionIconFolder: string;
 
 	constructor(leaf: WorkspaceLeaf, private plugin: FitnessRecordPlugin) {
 		super(leaf);
+		this.actionIconFolder = getActionIconFolder(plugin.manifest.dir, plugin.manifest.id);
 	}
 
 	getViewType(): string {
@@ -145,7 +148,7 @@ export class FitnessView extends ItemView {
 	private renderActionRecordItem(parent: HTMLElement, data: FitnessData, record: FitnessRecord, entry: WorkoutEntry | null): void {
 		const item = parent.createDiv({ cls: 'fr-record-item' });
 		const icon = item.createDiv({ cls: 'fr-record-icon' });
-		setIcon(icon, 'dumbbell');
+		renderActionIcon(this.app, icon, this.actionIconFolder, entry ? getActionIcon(data, entry.action) : DEFAULT_ACTION_ICON);
 		const content = item.createDiv({ cls: 'fr-record-content' });
 		const top = content.createDiv({ cls: 'fr-record-top' });
 		const titleLine = top.createDiv({ cls: 'fr-record-title-line' });
@@ -332,13 +335,14 @@ export class FitnessView extends ItemView {
 				item.classList.add('fr-muscle-region');
 				item.classList.toggle('is-empty', count === 0);
 				item.setAttribute('data-count', String(count));
-				item.setAttribute('aria-label', `${stat?.names.join(' / ') ?? muscle.name}: ${count}`);
+				const tooltip = formatMuscleRegionTooltip(stat?.names ?? [muscle.name], count);
+				item.setAttribute('aria-label', tooltip.replace(/\n/g, '; '));
 				item.style.setProperty('--fr-muscle-alpha', String(stat?.alpha ?? 0));
 				item.style.setProperty('fill', count === 0 ? 'transparent' : `color-mix(in srgb, var(--fr-heat) calc(var(--fr-muscle-alpha) * 82%), transparent)`);
 				item.style.setProperty('opacity', '1');
 				item.style.setProperty('stroke', count === 0 ? 'transparent' : 'color-mix(in srgb, var(--fr-heat) 34%, var(--fr-border))');
 				const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-				titleEl.textContent = `${stat?.names.join(' / ') ?? muscle.name}: ${count} 次`;
+				titleEl.textContent = tooltip;
 				item.prepend(titleEl);
 			}
 		}
@@ -516,7 +520,7 @@ export class FitnessView extends ItemView {
 
 	private openActionLibrary(): void {
 		if (!this.data) return;
-		new ActionLibraryModal(this.app, this.data.sections, async () => {
+		new ActionLibraryModal(this.app, this.data.sections, this.actionIconFolder, async () => {
 			await this.persistAndRender();
 		}).open();
 	}
@@ -532,7 +536,7 @@ export class FitnessView extends ItemView {
 		} : {
 			weight: getLatestWeight(this.data.records),
 		};
-		new WorkoutRecordModal(this.app, this.data.sections, async (payload) => {
+		new WorkoutRecordModal(this.app, this.data.sections, this.actionIconFolder, async (payload) => {
 			if (record) {
 				applyWorkoutPayload(record, payload);
 			} else {
@@ -546,11 +550,12 @@ export class FitnessView extends ItemView {
 
 	private openActionModal(section: FitnessSection, action?: FitnessAction): void {
 		if (!this.data) return;
-		new ActionModal(this.app, section, async (payload) => {
+		new ActionModal(this.app, section, this.actionIconFolder, async (payload) => {
 			if (action) {
 				action.name = payload.name;
 				action.muscles = payload.muscles;
 				action.description = payload.description;
+				action.icon = payload.icon;
 			} else {
 				section.actions.push({
 					id: createId(payload.name),
@@ -627,6 +632,11 @@ function createId(seed: string): string {
 
 function getAllActions(data: FitnessData): FitnessAction[] {
 	return data.sections.flatMap((section) => section.actions);
+}
+
+function getActionIcon(data: FitnessData, actionName: string): string {
+	const action = getAllActions(data).find((item) => item.name === actionName);
+	return action?.icon?.trim() || DEFAULT_ACTION_ICON;
 }
 
 function stringifyCell(value: CellValue): string {
@@ -733,6 +743,10 @@ function buildSvgRegionStats(
 		}
 	}
 	return stats;
+}
+
+function formatMuscleRegionTooltip(names: string[], count: number): string {
+	return names.map((name) => `${name}: ${count} 次`).join('\n');
 }
 
 function findSvgMuscleRegion(parent: HTMLElement, regionId: string): SVGElement | null {

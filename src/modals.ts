@@ -1,7 +1,9 @@
 import { Modal, Notice, setIcon, Setting } from 'obsidian';
+import { ACTION_ICON_SUBFOLDER, LUCIDE_ACTION_ICON_OPTIONS, loadLocalActionIcons, normalizeActionIcon, renderActionIcon, type LocalActionIcon } from './icons';
 import { MUSCLES, type ColumnType, type FitnessAction, type FitnessColumn, type FitnessSection, type WorkoutEntry } from './types';
 
-type SaveActionPayload = Pick<FitnessAction, 'name' | 'muscles' | 'description'>;
+type SaveActionPayload = Pick<FitnessAction, 'name' | 'muscles' | 'description' | 'icon'>;
+type MaybePromise<T> = T | Promise<T>;
 export type SaveWorkoutPayload = {
 	date: string;
 	section: string;
@@ -60,21 +62,28 @@ export class ActionModal extends Modal {
 	private name: string;
 	private description: string;
 	private muscles: string[];
+	private icon: string;
+	private localIcons: LocalActionIcon[] = [];
+	private iconsLoaded = false;
 
 	constructor(
 		app: ConstructorParameters<typeof Modal>[0],
 		private section: FitnessSection,
-		private onSubmit: (payload: SaveActionPayload) => void,
+		private actionIconFolder: string,
+		private onSubmit: (payload: SaveActionPayload) => MaybePromise<void>,
 		private action?: FitnessAction,
 	) {
 		super(app);
 		this.name = action?.name ?? '';
 		this.description = action?.description ?? '';
 		this.muscles = action?.muscles ?? [];
+		this.icon = normalizeActionIcon(action?.icon);
 	}
 
-	onOpen(): void {
+	async onOpen(): Promise<void> {
 		this.modalEl.addClass('fr-modal');
+		this.localIcons = await loadLocalActionIcons(this.app, this.actionIconFolder);
+		this.iconsLoaded = true;
 		this.render();
 	}
 
@@ -95,6 +104,50 @@ export class ActionModal extends Modal {
 		nameInput.addEventListener('input', () => {
 			this.name = nameInput.value;
 		});
+
+		const iconRow = contentEl.createDiv({ cls: 'fr-form-row' });
+		iconRow.createEl('label', { text: '动作图标' });
+		const iconList = iconRow.createDiv({ cls: 'fr-icon-picker' });
+		if (!this.iconsLoaded) {
+			iconList.createDiv({ cls: 'fr-empty', text: '正在加载图标...' });
+		}
+		if (this.iconsLoaded && this.localIcons.length === 0) {
+			iconList.createDiv({ cls: 'fr-icon-picker-hint', text: `把 SVG/PNG 图标放到插件目录的 ${ACTION_ICON_SUBFOLDER} 后可在这里选择` });
+		}
+		for (const localIcon of this.localIcons) {
+			const active = this.icon === localIcon.id;
+			const item = iconList.createEl('button', {
+				cls: `fr-icon-option fr-local-icon-option ${active ? 'is-active' : ''}`,
+				attr: {
+					'aria-label': localIcon.name,
+					'aria-pressed': String(active),
+					title: localIcon.name,
+				},
+			});
+			renderActionIcon(this.app, item, this.actionIconFolder, localIcon.id);
+			item.addEventListener('click', () => {
+				this.icon = localIcon.id;
+				this.render();
+			});
+		}
+		if (this.localIcons.length === 0) {
+			for (const iconName of LUCIDE_ACTION_ICON_OPTIONS) {
+				const active = this.icon === iconName;
+				const item = iconList.createEl('button', {
+					cls: `fr-icon-option ${active ? 'is-active' : ''}`,
+					attr: {
+						'aria-label': iconName,
+						'aria-pressed': String(active),
+						title: iconName,
+					},
+				});
+				setIcon(item, iconName);
+				item.addEventListener('click', () => {
+					this.icon = iconName;
+					this.render();
+				});
+			}
+		}
 
 		const musclesRow = contentEl.createDiv({ cls: 'fr-form-row' });
 		musclesRow.createEl('label', { text: '锻炼肌肉' });
@@ -127,19 +180,22 @@ export class ActionModal extends Modal {
 			this.description = descriptionInput.value;
 		});
 
-		renderModalActions(contentEl, () => this.close(), () => this.submit());
+		renderModalActions(contentEl, () => this.close(), () => {
+			void this.submit();
+		});
 	}
 
-	private submit(): void {
+	private async submit(): Promise<void> {
 		const name = this.name.trim();
 		if (!name) {
 			new Notice('动作名称不能为空');
 			return;
 		}
-		this.onSubmit({
+		await this.onSubmit({
 			name,
 			muscles: this.muscles,
 			description: this.description.trim(),
+			icon: normalizeActionIcon(this.icon),
 		});
 		this.close();
 	}
@@ -151,7 +207,8 @@ export class ActionLibraryModal extends Modal {
 	constructor(
 		app: ConstructorParameters<typeof Modal>[0],
 		private sections: FitnessSection[],
-		private onChange: () => void,
+		private actionIconFolder: string,
+		private onChange: () => MaybePromise<void>,
 	) {
 		super(app);
 		this.activeSectionId = sections[0]?.id ?? '';
@@ -194,30 +251,50 @@ export class ActionLibraryModal extends Modal {
 		}
 
 		for (const action of section.actions) {
-			const item = grid.createEl('button', { cls: 'fr-library-action' });
-			item.createSpan({ cls: 'fr-library-name', text: action.name });
-			item.createSpan({ cls: 'fr-library-desc', text: action.description || '点击编辑' });
-			item.addEventListener('click', () => {
-				new ActionModal(this.app, section, (payload) => {
+			const item = grid.createDiv({ cls: 'fr-library-action', attr: { role: 'button', tabindex: '0' } });
+			const remove = item.createEl('button', { cls: 'fr-library-remove', text: '×', attr: { 'aria-label': '删除动作', title: '删除动作' } });
+			remove.addEventListener('click', async (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				section.actions = section.actions.filter((itemAction) => itemAction.id !== action.id);
+				await this.onChange();
+				this.render();
+			});
+			const title = item.createDiv({ cls: 'fr-library-title' });
+			const icon = title.createSpan({ cls: 'fr-action-icon fr-library-icon' });
+			renderActionIcon(this.app, icon, this.actionIconFolder, action.icon);
+			title.createSpan({ cls: 'fr-library-name', text: action.name });
+			const description = action.description || '点击编辑';
+			item.createSpan({ cls: 'fr-library-desc', text: description, attr: { title: description } });
+			const openEditor = () => {
+				new ActionModal(this.app, section, this.actionIconFolder, async (payload) => {
 					action.name = payload.name;
 					action.muscles = payload.muscles;
 					action.description = payload.description;
-					this.onChange();
+					action.icon = payload.icon;
+					await this.onChange();
 					this.render();
 				}, action).open();
+			};
+			item.addEventListener('click', openEditor);
+			item.addEventListener('keydown', (event) => {
+				if (event.key !== 'Enter' && event.key !== ' ') return;
+				event.preventDefault();
+				openEditor();
 			});
 		}
 
 		const add = grid.createEl('button', { cls: 'fr-library-action fr-library-add' });
-		add.createSpan({ cls: 'fr-library-name', text: '+' });
-		add.createSpan({ cls: 'fr-library-desc', text: `新增${section.name}部动作` });
+		const addIcon = add.createSpan({ cls: 'fr-library-name' });
+		setIcon(addIcon, 'plus');
+		add.createSpan({ cls: 'fr-library-desc', text: '新增动作' });
 		add.addEventListener('click', () => {
-			new ActionModal(this.app, section, (payload) => {
+			new ActionModal(this.app, section, this.actionIconFolder, async (payload) => {
 				section.actions.push({
 					id: createId(payload.name),
 					...payload,
 				});
-				this.onChange();
+				await this.onChange();
 				this.render();
 			}).open();
 		});
@@ -357,6 +434,7 @@ export class WorkoutRecordModal extends Modal {
 	constructor(
 		app: ConstructorParameters<typeof Modal>[0],
 		private sections: FitnessSection[],
+		private actionIconFolder: string,
 		private onSubmit: (payload: SaveWorkoutPayload) => void,
 		private initial?: Partial<SaveWorkoutPayload>,
 	) {
@@ -449,8 +527,13 @@ export class WorkoutRecordModal extends Modal {
 				const active = this.selected.has(action.name);
 				const button = picker.createEl('button', {
 					cls: active ? 'is-active' : '',
-					text: active ? `✓ ${action.name}` : action.name,
+					attr: {
+						'aria-pressed': String(active),
+					},
 				});
+				const icon = button.createSpan({ cls: 'fr-action-icon fr-workout-picker-icon' });
+				renderActionIcon(this.app, icon, this.actionIconFolder, action.icon);
+				button.createSpan({ cls: 'fr-workout-picker-name', text: action.name });
 				button.addEventListener('click', () => {
 					if (active) this.selected.delete(action.name);
 					else this.selected.set(action.name, { action: action.name, sets: 0, reps: 0, weight: 0 });
@@ -465,7 +548,11 @@ export class WorkoutRecordModal extends Modal {
 		}
 		for (const entry of this.selected.values()) {
 			const row = selectedList.createDiv({ cls: 'fr-workout-entry' });
-			row.createDiv({ cls: 'fr-workout-entry-name', text: entry.action });
+			const name = row.createDiv({ cls: 'fr-workout-entry-name' });
+			const action = findActionByName(this.sections, entry.action);
+			const icon = name.createSpan({ cls: 'fr-action-icon fr-workout-entry-icon' });
+			renderActionIcon(this.app, icon, this.actionIconFolder, action?.icon);
+			name.createSpan({ text: entry.action });
 			this.renderNumberField(row, '组数', entry.sets, (value) => {
 				entry.sets = value;
 			});
@@ -668,4 +755,8 @@ function renderModalActions(contentEl: HTMLElement, onCancel: () => void, onSave
 function createId(seed: string): string {
 	const base = seed.trim().toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '') || 'item';
 	return `${base}-${Date.now().toString(36)}`;
+}
+
+function findActionByName(sections: FitnessSection[], name: string): FitnessAction | undefined {
+	return sections.flatMap((section) => section.actions).find((action) => action.name === name);
 }

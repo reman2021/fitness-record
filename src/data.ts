@@ -54,9 +54,11 @@ function parseData(text: string): FitnessData {
 function normalizeData(input: Partial<FitnessData> | null): FitnessData {
 	const defaults = createDefaultData();
 	if (!input) return defaults;
+	const sections = Array.isArray(input.sections) ? input.sections : defaults.sections;
+	normalizeActionMuscles(sections);
 	return {
 		schemaVersion: Number(input.schemaVersion ?? 1),
-		sections: Array.isArray(input.sections) ? input.sections : defaults.sections,
+		sections,
 		columns: Array.isArray(input.columns) && input.columns.length > 0 ? input.columns : DEFAULT_COLUMNS.map((column) => ({ ...column })),
 		records: Array.isArray(input.records) ? input.records : [],
 		ui: {
@@ -65,6 +67,16 @@ function normalizeData(input: Partial<FitnessData> | null): FitnessData {
 			heatmapDays: normalizeHeatmapDays(input.ui?.heatmapDays),
 		},
 	};
+}
+
+function normalizeActionMuscles(sections: FitnessData['sections']): void {
+	for (const section of sections) {
+		for (const action of section.actions ?? []) {
+			if (action.id === 'push-up' && !action.muscles.includes('serratus-anterior')) {
+				action.muscles = [...action.muscles, 'serratus-anterior'];
+			}
+		}
+	}
 }
 
 function normalizeHeatmapDays(value: unknown): HeatmapDays {

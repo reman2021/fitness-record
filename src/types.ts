@@ -32,6 +32,7 @@ export interface FitnessAction {
 	name: string;
 	muscles: string[];
 	description: string;
+	icon?: string;
 }
 
 export interface WorkoutEntry {
@@ -87,6 +88,7 @@ export const MUSCLES: MuscleDefinition[] = [
 	{ id: 'biceps-brachii', name: '肱二头肌', group: 'front', svgRegionIds: { front: ['front-biceps-brachii-left', 'front-biceps-brachii-right'] } },
 	{ id: 'triceps-brachii', name: '肱三头肌', group: 'back', svgRegionIds: { back: ['back-triceps-brachii-left', 'back-triceps-brachii-right'] } },
 	{ id: 'forearm-flexors', name: '前臂肌群', group: 'both', svgRegionIds: { front: ['front-forearm-flexors-left', 'front-forearm-flexors-right'], back: ['back-forearm-flexors-left', 'back-forearm-flexors-right'] } },
+	{ id: 'serratus-anterior', name: '前锯肌', group: 'front', svgRegionIds: { front: ['front-serratus-anterior-left', 'front-serratus-anterior-right'] } },
 	{ id: 'rectus-abdominis', name: '腹直肌', group: 'front', svgRegionIds: { front: ['front-rectus-abdominis'] } },
 	{ id: 'obliques', name: '腹斜肌', group: 'front', svgRegionIds: { front: ['front-obliques-left', 'front-obliques-right'] } },
 	{ id: 'latissimus-dorsi', name: '背阔肌', group: 'back', svgRegionIds: { back: ['back-latissimus-dorsi-left', 'back-latissimus-dorsi-right'] } },
@@ -116,8 +118,8 @@ export function createDefaultData(): FitnessData {
 				name: '胸',
 				collapsed: false,
 				actions: [
-					{ id: 'bench-press', name: '卧推', muscles: ['pectoralis-major', 'triceps-brachii', 'anterior-deltoid'], description: '杠铃或哑铃卧推。' },
-					{ id: 'push-up', name: '俯卧撑', muscles: ['pectoralis-major', 'triceps-brachii'], description: '自重胸部训练。' },
+					{ id: 'bench-press', name: '卧推', muscles: ['pectoralis-major', 'triceps-brachii', 'anterior-deltoid'], description: '杠铃或哑铃卧推。', icon: 'dumbbell' },
+					{ id: 'push-up', name: '俯卧撑', muscles: ['pectoralis-major', 'triceps-brachii', 'serratus-anterior'], description: '自重胸部训练。', icon: 'activity' },
 				],
 			},
 			{
@@ -125,13 +127,13 @@ export function createDefaultData(): FitnessData {
 				name: '背',
 				collapsed: false,
 				actions: [
-					{ id: 'pull-up', name: '引体向上', muscles: ['latissimus-dorsi', 'biceps-brachii'], description: '上肢拉力训练。' },
-					{ id: 'row', name: '划船', muscles: ['latissimus-dorsi', 'trapezius', 'posterior-deltoid'], description: '背部厚度训练。' },
+					{ id: 'pull-up', name: '引体向上', muscles: ['latissimus-dorsi', 'biceps-brachii'], description: '上肢拉力训练。', icon: 'target' },
+					{ id: 'row', name: '划船', muscles: ['latissimus-dorsi', 'trapezius', 'posterior-deltoid'], description: '背部厚度训练。', icon: 'repeat' },
 				],
 			},
-			{ id: 'legs', name: '腿', collapsed: false, actions: [{ id: 'squat', name: '深蹲', muscles: ['quadriceps', 'gluteus', 'hamstrings'], description: '下肢复合动作。' }] },
-			{ id: 'core', name: '核心', collapsed: false, actions: [{ id: 'plank', name: '平板支撑', muscles: ['rectus-abdominis', 'obliques'], description: '核心稳定训练。' }] },
-			{ id: 'cardio-section', name: '有氧', collapsed: false, actions: [{ id: 'running', name: '跑步', muscles: ['cardio', 'calves', 'quadriceps'], description: '心肺耐力训练。' }] },
+			{ id: 'legs', name: '腿', collapsed: false, actions: [{ id: 'squat', name: '深蹲', muscles: ['quadriceps', 'gluteus', 'hamstrings'], description: '下肢复合动作。', icon: 'dumbbell' }] },
+			{ id: 'core', name: '核心', collapsed: false, actions: [{ id: 'plank', name: '平板支撑', muscles: ['rectus-abdominis', 'obliques'], description: '核心稳定训练。', icon: 'timer' }] },
+			{ id: 'cardio-section', name: '有氧', collapsed: false, actions: [{ id: 'running', name: '跑步', muscles: ['cardio', 'calves', 'quadriceps'], description: '心肺耐力训练。', icon: 'footprints' }] },
 		],
 		columns: DEFAULT_COLUMNS.map((column) => ({ ...column })),
 		records: [],

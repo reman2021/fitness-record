@@ -16,11 +16,19 @@ export class FitnessSettingTab extends PluginSettingTab {
 			.setDesc('用于保存健身记录数据的 Markdown 文件路径。')
 			.addText((text) => {
 				text.setPlaceholder('fitness-record.md')
-					.setValue(this.plugin.settings.dataFile)
-					.onChange(async (value) => {
-						this.plugin.settings.dataFile = value.trim() || 'fitness-record.md';
-						await this.plugin.saveSettings();
-					});
+					.setValue(this.plugin.settings.dataFile);
+				const commit = async () => {
+					const next = text.getValue().trim() || 'fitness-record.md';
+					if (next === this.plugin.settings.dataFile) return;
+					this.plugin.settings.dataFile = next;
+					await this.plugin.saveSettings();
+				};
+				text.inputEl.addEventListener('change', () => {
+					void commit();
+				});
+				text.inputEl.addEventListener('blur', () => {
+					void commit();
+				});
 			});
 
 		new Setting(containerEl)
