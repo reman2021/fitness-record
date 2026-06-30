@@ -1,8 +1,9 @@
-import { ItemView, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Modal, Notice, setIcon, TFile, WorkspaceLeaf } from 'obsidian';
 import { loadFitnessData, saveFitnessData } from './data';
 import { DEFAULT_ACTION_ICON, getActionIconFolder, renderActionIcon } from './icons';
 import { ActionLibraryModal, ActionModal, ColumnModal, WorkoutRecordModal, type SaveWorkoutPayload } from './modals';
-import { HEATMAP_DAY_OPTIONS, MUSCLES, type CellValue, type FitnessAction, type FitnessColumn, type FitnessData, type FitnessRecord, type FitnessSection, type HeatmapDays, type WorkoutEntry } from './types';
+import { DEFAULT_HEATMAP_DAYS, HEATMAP_DAY_OPTIONS, MUSCLES, type CellValue, type FitnessAction, type FitnessColumn, type FitnessData, type FitnessRecord, type FitnessSection, type HeatmapDays, type WorkoutEntry } from './types';
+import { formatWorkoutEntry, normalizeWorkoutEntry, stringifyWorkoutEntries } from './workout-entry';
 import type FitnessRecordPlugin from './main';
 import bodyBackSvg from '../人体背面.svg';
 import bodyFrontSvg from '../人体正面.svg';
@@ -18,6 +19,9 @@ export class FitnessView extends ItemView {
 	private tableFilter = '';
 	private searchComposing = false;
 	private actionIconFolder: string;
+	private mobileHeatmapOpen = false;
+	private mobileHeatmapTabsOpen = false;
+	private mobileHeatmapExpanded: 'front' | 'back' | 'weight' | null = null;
 
 	constructor(leaf: WorkspaceLeaf, private plugin: FitnessRecordPlugin) {
 		super(leaf);
@@ -147,6 +151,8 @@ export class FitnessView extends ItemView {
 
 	private renderActionRecordItem(parent: HTMLElement, data: FitnessData, record: FitnessRecord, entry: WorkoutEntry | null): void {
 		const item = parent.createDiv({ cls: 'fr-record-item' });
+		item.setAttribute('role', 'button');
+		item.setAttribute('tabindex', '0');
 		const icon = item.createDiv({ cls: 'fr-record-icon' });
 		renderActionIcon(this.app, icon, this.actionIconFolder, entry ? getActionIcon(data, entry.action) : DEFAULT_ACTION_ICON);
 		const content = item.createDiv({ cls: 'fr-record-content' });
@@ -164,14 +170,72 @@ export class FitnessView extends ItemView {
 		edit.addEventListener('click', () => this.openWorkoutModal(record));
 		const remove = side.createEl('button', { attr: { 'aria-label': '删除记录', title: '删除记录' } });
 		setIcon(remove, 'trash-2');
-		remove.addEventListener('click', async () => {
-			if (entry && getWorkoutEntries(record).length > 1) {
-				record.cells.actions = getWorkoutEntries(record).filter((itemEntry) => itemEntry.action !== entry.action);
-			} else {
-				data.records = data.records.filter((itemRecord) => itemRecord.id !== record.id);
-			}
-			await this.persistAndRender();
+		remove.addEventListener('click', (event) => {
+			event.stopPropagation();
+			this.confirmDeleteRecord(data, record, entry);
 		});
+		this.setupMobileRecordGestures(item, data, record, entry);
+	}
+
+	private setupMobileRecordGestures(item: HTMLElement, data: FitnessData, record: FitnessRecord, entry: WorkoutEntry | null): void {
+		let longPressTimer: number | null = null;
+		let longPressTriggered = false;
+		let startX = 0;
+		let startY = 0;
+		const clearLongPress = () => {
+			if (longPressTimer !== null) window.clearTimeout(longPressTimer);
+			longPressTimer = null;
+		};
+		item.addEventListener('pointerdown', (event) => {
+			if (!isMobileViewport() || (event.target as HTMLElement).closest('button, input, select, textarea, a')) return;
+			longPressTriggered = false;
+			startX = event.clientX;
+			startY = event.clientY;
+			clearLongPress();
+			longPressTimer = window.setTimeout(() => {
+				longPressTriggered = true;
+				this.confirmDeleteRecord(data, record, entry);
+			}, 560);
+		});
+		item.addEventListener('pointermove', (event) => {
+			if (Math.abs(event.clientX - startX) > 10 || Math.abs(event.clientY - startY) > 10) clearLongPress();
+		});
+		item.addEventListener('pointerup', clearLongPress);
+		item.addEventListener('pointercancel', clearLongPress);
+		item.addEventListener('click', (event) => {
+			if (!isMobileViewport() || (event.target as HTMLElement).closest('button, input, select, textarea, a')) return;
+			if (longPressTriggered) {
+				event.preventDefault();
+				event.stopPropagation();
+				longPressTriggered = false;
+				return;
+			}
+			this.openWorkoutModal(record);
+		});
+		item.addEventListener('keydown', (event) => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			this.openWorkoutModal(record);
+		});
+	}
+
+	private confirmDeleteRecord(data: FitnessData, record: FitnessRecord, entry: WorkoutEntry | null): void {
+		const deletingSingleEntry = Boolean(entry && getWorkoutEntries(record).length > 1);
+		new ConfirmDeleteModal(
+			this.app,
+			deletingSingleEntry ? '删除动作记录' : '删除训练记录',
+			deletingSingleEntry
+				? `确定删除「${entry?.action ?? '这个动作'}」这条动作记录吗？`
+				: '确定删除这条训练记录吗？此操作不能撤销。',
+			async () => {
+				if (entry && getWorkoutEntries(record).length > 1) {
+					record.cells.actions = getWorkoutEntries(record).filter((itemEntry) => itemEntry.action !== entry.action);
+				} else {
+					data.records = data.records.filter((itemRecord) => itemRecord.id !== record.id);
+				}
+				await this.persistAndRender();
+			},
+		).open();
 	}
 
 	private renderCell(td: HTMLElement, data: FitnessData, record: FitnessRecord, column: FitnessColumn): void {
@@ -263,11 +327,119 @@ export class FitnessView extends ItemView {
 		const counts = computeMuscleCounts(data, data.ui.heatmapDays);
 		const max = Math.max(1, ...Array.from(counts.values()));
 		const heatmap = body.createDiv({ cls: 'fr-heatmap' });
+		this.renderMobileHeatmapBar(heatmap, data, counts, max);
 		this.renderCardioHeat(heatmap, counts, max);
-		const maps = heatmap.createDiv({ cls: 'fr-heatmap-maps' });
+		const maps = heatmap.createDiv({ cls: 'fr-heatmap-maps fr-desktop-heatmap-maps' });
 		this.renderBodyMap(maps, '正面', 'front', counts, max);
 		this.renderBodyMap(maps, '背面', 'back', counts, max);
-		this.renderWeightChart(heatmap, data);
+		const desktopWeight = heatmap.createDiv({ cls: 'fr-desktop-weight-chart' });
+		this.renderWeightChart(desktopWeight, data);
+	}
+
+	private renderMobileHeatmapBar(parent: HTMLElement, data: FitnessData, counts: Map<string, number>, max: number): void {
+		const bar = parent.createDiv({ cls: 'fr-mobile-heatmap-bar' });
+		const strip = bar.createDiv({ cls: 'fr-mobile-heatmap-strip' });
+		strip.createDiv({ cls: 'fr-mobile-heatmap-strip-hint' });
+		strip.addEventListener('click', (event) => {
+			event.stopPropagation();
+			this.mobileHeatmapOpen = !this.mobileHeatmapOpen;
+			if (!this.mobileHeatmapOpen) {
+				this.mobileHeatmapTabsOpen = false;
+				this.mobileHeatmapExpanded = null;
+			} else {
+				this.mobileHeatmapTabsOpen = true;
+			}
+			this.refreshMobileHeatmapPanel(bar, data, counts, max);
+		});
+
+		const content = bar.createDiv({ cls: 'fr-mobile-heatmap-content' });
+		this.renderMobileHeatmapRange(content, data);
+		this.renderCardioHeat(content, counts, max);
+		const tabs = bar.createDiv({ cls: 'fr-mobile-heatmap-tabs' });
+		const panel = bar.createDiv({ cls: 'fr-mobile-heatmap-panel' });
+		const items: Array<{ key: 'front' | 'back' | 'weight'; label: string }> = [
+			{ key: 'front', label: '正面' },
+			{ key: 'back', label: '背面' },
+			{ key: 'weight', label: '体重' },
+		];
+		for (const item of items) {
+			const button = tabs.createEl('button', {
+				cls: 'fr-mobile-heatmap-btn',
+				text: item.label,
+				attr: {
+					'aria-label': item.label,
+					'aria-expanded': String(this.mobileHeatmapExpanded === item.key),
+				},
+			});
+			button.dataset.heatmapKey = item.key;
+			button.addEventListener('click', (event) => {
+				event.stopPropagation();
+				this.mobileHeatmapExpanded = this.mobileHeatmapExpanded === item.key ? null : item.key;
+				this.refreshMobileHeatmapPanel(bar, data, counts, max);
+			});
+		}
+		this.refreshMobileHeatmapPanel(bar, data, counts, max);
+	}
+
+	private refreshMobileHeatmapPanel(bar: HTMLElement, data: FitnessData, counts: Map<string, number>, max: number): void {
+		const strip = bar.querySelector<HTMLElement>('.fr-mobile-heatmap-strip');
+		const content = bar.querySelector<HTMLElement>('.fr-mobile-heatmap-content');
+		const tabs = bar.querySelector<HTMLElement>('.fr-mobile-heatmap-tabs');
+		const panel = bar.querySelector<HTMLElement>('.fr-mobile-heatmap-panel');
+		if (!strip || !content || !tabs || !panel) return;
+		bar.toggleClass('is-open', this.mobileHeatmapOpen);
+		bar.toggleClass('has-open-panel', Boolean(this.mobileHeatmapExpanded));
+		this.updateMobileHeatmapHeight(bar);
+		strip.toggleClass('is-active', this.mobileHeatmapOpen);
+		content.toggleClass('is-open', this.mobileHeatmapOpen);
+		tabs.toggleClass('is-open', this.mobileHeatmapOpen && this.mobileHeatmapTabsOpen);
+		for (const button of Array.from(tabs.querySelectorAll<HTMLButtonElement>('.fr-mobile-heatmap-btn'))) {
+			const active = button.dataset.heatmapKey === this.mobileHeatmapExpanded;
+			button.toggleClass('is-active', active);
+			button.setAttribute('aria-expanded', String(active));
+		}
+
+		panel.empty();
+		if (!this.mobileHeatmapExpanded) {
+			panel.removeClass('is-open');
+			return;
+		}
+		panel.addClass('is-open');
+		if (this.mobileHeatmapExpanded === 'front') {
+			this.renderBodyMap(panel, '正面', 'front', counts, max);
+		} else if (this.mobileHeatmapExpanded === 'back') {
+			this.renderBodyMap(panel, '背面', 'back', counts, max);
+		} else {
+			this.renderWeightChart(panel, data);
+		}
+		this.updateMobileHeatmapHeight(bar);
+	}
+
+	private updateMobileHeatmapHeight(bar: HTMLElement): void {
+		if (!isMobileViewport()) return;
+		const root = this.containerEl.children[1] as HTMLElement | undefined;
+		const rootTop = root?.getBoundingClientRect().top ?? 0;
+		const top = Math.max(0, Math.round(rootTop));
+		bar.style.setProperty('--fr-mobile-heatmap-top', `${top}px`);
+		bar.style.setProperty('--fr-mobile-heatmap-height', `${Math.max(320, Math.round(window.innerHeight - top))}px`);
+	}
+
+	private renderMobileHeatmapRange(parent: HTMLElement, data: FitnessData): void {
+		const wrap = parent.createDiv({ cls: 'fr-mobile-heatmap-range' });
+		wrap.createSpan({ cls: 'fr-mobile-heatmap-range-label', text: '时间范围' });
+		const select = wrap.createEl('select', { cls: 'fr-mobile-heatmap-range-select', attr: { 'aria-label': '选择热力图时间范围' } });
+		for (const days of HEATMAP_DAY_OPTIONS) {
+			select.createEl('option', { value: String(days), text: days === 'all' ? '全部' : `${days}天` });
+		}
+		select.value = String(data.ui.heatmapDays);
+		select.addEventListener('change', async () => {
+			const next = parseHeatmapDays(select.value);
+			if (data.ui.heatmapDays === next) return;
+			data.ui.heatmapDays = next;
+			const body = parent.closest('.fr-sidebar')?.querySelector<HTMLElement>('.fr-sidebar-body');
+			if (body) this.renderHeatmapBody(body, data);
+			await this.persist();
+		});
 	}
 
 	private renderHeatmapRange(parent: HTMLElement, data: FitnessData): void {
@@ -642,7 +814,7 @@ function getActionIcon(data: FitnessData, actionName: string): string {
 function stringifyCell(value: CellValue): string {
 	if (value === null || value === undefined) return '';
 	if (Array.isArray(value) && value.every((item) => typeof item === 'object')) {
-		return (value as WorkoutEntry[]).map((item) => [item.action, item.sets, item.reps, item.weight].filter((part) => part !== null && part !== undefined).join(' ')).join(', ');
+		return stringifyWorkoutEntries((value as WorkoutEntry[]).map((item) => normalizeWorkoutEntry(item)));
 	}
 	if (Array.isArray(value)) return value.join(', ');
 	return String(value);
@@ -697,6 +869,12 @@ function isRecordInHeatmapRange(record: FitnessRecord, days: HeatmapDays): boole
 	const start = new Date(today);
 	start.setDate(today.getDate() - (days - 1));
 	return recordDate >= start;
+}
+
+function parseHeatmapDays(value: string): HeatmapDays {
+	if (value === 'all') return 'all';
+	const numeric = Number(value);
+	return HEATMAP_DAY_OPTIONS.includes(numeric as HeatmapDays) ? numeric as HeatmapDays : DEFAULT_HEATMAP_DAYS;
 }
 
 function parseRecordDate(value: CellValue): Date | null {
@@ -793,15 +971,7 @@ function applyWorkoutPayload(record: FitnessRecord, payload: SaveWorkoutPayload)
 function getWorkoutEntries(record: FitnessRecord): WorkoutEntry[] {
 	const raw = record.cells.actions;
 	if (!Array.isArray(raw)) return [];
-	return raw.map((item) => {
-		if (typeof item === 'string') return { action: item, sets: null, reps: null, weight: null };
-		return {
-			action: item.action,
-			sets: item.sets ?? null,
-			reps: item.reps ?? null,
-			weight: item.weight ?? null,
-		};
-	}).filter((entry) => entry.action);
+	return raw.map((item) => normalizeWorkoutEntry(item as string | Partial<WorkoutEntry>)).filter((entry) => entry.action);
 }
 
 function groupRecordsByDate(records: FitnessRecord[]): { date: string; records: FitnessRecord[] }[] {
@@ -835,11 +1005,7 @@ function sumEntries(records: FitnessRecord[]): number {
 }
 
 function formatEntry(entry: WorkoutEntry): string {
-	const parts: string[] = [];
-	if (entry.sets !== null) parts.push(`${entry.sets}组`);
-	if (entry.reps !== null) parts.push(`${entry.reps}次`);
-	if (entry.weight !== null) parts.push(`${entry.weight}kg`);
-	return parts.length ? parts.join(' · ') : '未填写训练量';
+	return formatWorkoutEntry(entry);
 }
 
 function formatDateLabel(date: string): string {
@@ -873,6 +1039,10 @@ function cleanSectionName(value: CellValue): string {
 	return String(value || '训练').replace(/[\s_-]+$/g, '');
 }
 
+function isMobileViewport(): boolean {
+	return window.matchMedia('(max-width: 800px)').matches;
+}
+
 function readStoredSidebarWidth(): number {
 	return clampSidebarWidth(Number(localStorage.getItem('fitness-record-heatmap-width') ?? 420));
 }
@@ -882,4 +1052,32 @@ function clampSidebarWidth(width: number): number {
 	const max = Math.max(380, maxByViewport);
 	const value = Number.isFinite(width) ? width : 420;
 	return Math.min(max, Math.max(380, Math.round(value)));
+}
+
+class ConfirmDeleteModal extends Modal {
+	constructor(
+		app: ConstructorParameters<typeof Modal>[0],
+		private title: string,
+		private message: string,
+		private onConfirm: () => Promise<void>,
+	) {
+		super(app);
+	}
+
+	onOpen(): void {
+		this.modalEl.addClass('fr-modal', 'fr-confirm-delete-modal');
+		const { contentEl } = this;
+		contentEl.empty();
+		const header = contentEl.createDiv({ cls: 'fr-modal-header' });
+		header.createDiv({ cls: 'fr-modal-title', text: this.title });
+		contentEl.createDiv({ cls: 'fr-confirm-delete-message', text: this.message });
+		const actions = contentEl.createDiv({ cls: 'fr-modal-actions fr-confirm-delete-actions' });
+		const cancel = actions.createEl('button', { text: '取消' });
+		cancel.addEventListener('click', () => this.close());
+		const confirm = actions.createEl('button', { cls: 'fr-modal-danger', text: '删除' });
+		confirm.addEventListener('click', async () => {
+			await this.onConfirm();
+			this.close();
+		});
+	}
 }

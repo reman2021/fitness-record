@@ -1,12 +1,13 @@
 {
 	"name": "fitness-record",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "Obsidian fitness record plugin with action library, workout table, and muscle heatmap.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+		"test": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs test && node --test tests/*.mjs"
 	},
 	"keywords": [
 		"obsidian",

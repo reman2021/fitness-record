@@ -40,6 +40,7 @@ export interface WorkoutEntry {
 	sets: number | null;
 	reps: number | null;
 	weight: number | null;
+	duration: number | null;
 }
 
 export interface FitnessSection {

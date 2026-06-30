@@ -1,7 +1,7 @@
 {
 	"id": "fitness-record",
 	"name": "Fitness Record",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"minAppVersion": "1.0.0",
 	"description": "Record workouts in Obsidian with an action library, Notion-like table, and muscle heatmap.",
 	"author": "Reman",

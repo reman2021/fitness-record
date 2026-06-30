@@ -447,6 +447,7 @@ export class WorkoutRecordModal extends Modal {
 				sets: entry.sets ?? 0,
 				reps: entry.reps ?? 0,
 				weight: entry.weight ?? 0,
+				duration: entry.duration ?? 0,
 			});
 		}
 		this.weight = initial?.weight === null || initial?.weight === undefined ? '' : String(initial.weight);
@@ -536,7 +537,7 @@ export class WorkoutRecordModal extends Modal {
 				button.createSpan({ cls: 'fr-workout-picker-name', text: action.name });
 				button.addEventListener('click', () => {
 					if (active) this.selected.delete(action.name);
-					else this.selected.set(action.name, { action: action.name, sets: 0, reps: 0, weight: 0 });
+					else this.selected.set(action.name, { action: action.name, sets: 0, reps: 0, weight: 0, duration: 0 });
 					this.render();
 				});
 			}
@@ -544,7 +545,7 @@ export class WorkoutRecordModal extends Modal {
 
 		const selectedList = contentEl.createDiv({ cls: 'fr-workout-selected' });
 		if (this.selected.size === 0) {
-			selectedList.createDiv({ cls: 'fr-empty', text: '选择动作后填写组数、每组次数和重量' });
+			selectedList.createDiv({ cls: 'fr-empty', text: '选择动作后填写组数、每组次数、重量和时间' });
 		}
 		for (const entry of this.selected.values()) {
 			const row = selectedList.createDiv({ cls: 'fr-workout-entry' });
@@ -562,7 +563,17 @@ export class WorkoutRecordModal extends Modal {
 			this.renderNumberField(row, '重量(kg)', entry.weight, (value) => {
 				entry.weight = value;
 			});
-			const remove = row.createEl('button', { cls: 'fr-workout-remove', text: '移除' });
+			this.renderNumberField(row, '时间(分钟)', entry.duration, (value) => {
+				entry.duration = value;
+			});
+			const remove = row.createEl('button', {
+				cls: 'fr-workout-remove',
+				text: '×',
+				attr: {
+					'aria-label': `移除${entry.action}`,
+					title: '移除动作',
+				},
+			});
 			remove.addEventListener('click', () => {
 				this.selected.delete(entry.action);
 				this.render();
